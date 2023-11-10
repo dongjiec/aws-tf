@@ -1,0 +1,46 @@
+provider "azurerm" {
+    features {}
+}
+
+resource "azurerm_virtual_machine" "generic-machine" {
+  location = var.azure-dc
+  count = var.instanace-count
+  name = var.machine-name
+  network_interface_ids = var.vir-nic
+  resource_group_name = var.resource-grp-name
+  vm_size = var.machine-type
+
+  storage_image_reference {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "16.04-LTS"
+    version   = "latest"
+  }
+  storage_os_disk {
+    name              = "myosdisk1"
+    caching           = "ReadWrite"
+    create_option     = "FromImage"
+    managed_disk_type = "Standard_LRS"
+  }
+  os_profile {
+    computer_name  = var.sys_hostname
+    admin_username = var.account_name
+    admin_password = "123.com"
+  }
+  os_profile_linux_config{
+    disable_password_authentication = false
+  }
+
+  /*  windows 主机找不到sshkey (23.11.10）
+  os_profile_linux_config {
+    disable_password_authentication = true
+    ssh_keys {
+      key_data = file("/Users/.ssh/your_public_key_here_ssh_key.pub")
+      path = "/home/${var.account_name}/.ssh/authorized_keys"
+    }
+  }
+  */
+  tags = {
+    environment = "staging"
+  }
+}

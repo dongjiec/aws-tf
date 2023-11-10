@@ -1,0 +1,126 @@
+---
+  - name: Copy Keys 
+    copy:
+      src: "{{ item }}"
+      dest: /var/lib/kubernetes/
+    become: yes
+    with_items: 
+      - ca.pem
+      - ca-key.pem
+      - kubernetes-key.pem 
+      - kubernetes.pem
+      - service-account-key.pem
+      - service-account.pem
+
+  - name: Copy encryption configs 
+    template:
+      src: encryption-config.yaml.j2
+      dest: /var/lib/kubernetes/encryption-config.yaml
+    become: yes
+
+
+  - name: Configure Service file for controller 0
+    template:
+      src: kube-apiserver.service.j2
+      dest: /etc/systemd/system/kube-apiserver.service
+    when: ansible_hostname == "controller0"
+    become: yes
+
+  - name: Configure Service file for controller 1
+    template:
+      src: kube-apiserver.service.j2
+      dest: /etc/systemd/system/kube-apiserver.service
+    when: ansible_hostname == "controller1"
+    become: yes
+
+  - name: Configure Service file for controller 2
+    template:
+      src: kube-apiserver.service.j2
+      dest: /etc/systemd/system/kube-apiserver.service
+    when: ansible_hostname == "controller2"
+    become: yes
+
+  - name: Copy kube-controller-manager.kubeconfig to all controllers
+    copy: 
+      src: kube-controller-manager.kubeconfig
+      dest: /var/lib/kubernetes/
+    become: yes
+
+  - name: Copy the systemd service filr for kube-controller-manager
+    template: 
+      src: kube-controller-manager.service.j2
+      dest: /etc/systemd/system/kube-controller-manager.service
+    become: yes
+
+  - name: Copy kube-scheduler kubeconfig 
+    copy:
+      src: kube-scheduler.kubeconfig
+      dest: /var/lib/kubernetes/
+    become: yes
+
+  - name: Copy kube-scheduler.yaml configuration file
+    copy: 
+      src: kube-scheduler.yaml
+      dest: /etc/kubernetes/config/kube-scheduler.yaml
+    become: yes  
+
+  - name: Copy kube-scheduler.service systemd unit file
+    copy: 
+      src: kube-scheduler.service
+      dest: /etc/systemd/system/kube-scheduler.service
+    become: yes
+
+  - name: Start Controllers - kube-apiserver
+    systemd:
+      state: started
+      daemon_reload: yes
+      name: kube-apiserver
+      enabled: yes
+    become: yes
+
+  - name: Start Controllers - kube-controller-manager
+    systemd:
+      state: started
+      daemon_reload: yes
+      name: kube-controller-manager
+      enabled: yes
+    become: yes
+
+  - name: Start Controllers - kube-scheduler
+    systemd:
+      state: started
+      daemon_reload: yes
+      name: kube-scheduler
+      enabled: yes
+    become: yes
+
+  - name: Pause for 15 sec 
+    pause:
+      seconds: 15
+
+  - name: Check get components
+    shell: kubectl get componentstatuses
+    register: componentstatuses
+
+  - name: Show Component Status 
+    debug: 
+      var: componentstatuses.stdout_lines
+
+  - name: Copy RBAC and kubernetes user specific binding
+    copy:
+      src: "{{ item }}"
+      dest: ~/
+    with_items: 
+      - rbac_auth
+      - bind_kubernetes_user
+    when: ansible_hostname == "controller0"
+
+  - name: Configure RBAC for kubelet auth on controller0
+    shell:  kubectl apply -f rbac_auth
+    when: ansible_hostname == "controller0"
+
+  - name: Bind ClusterRole to kubernetes user
+    shell:  kubectl apply -f bind_kubernetes_user
+    when: ansible_hostname == "controller0"
+
+

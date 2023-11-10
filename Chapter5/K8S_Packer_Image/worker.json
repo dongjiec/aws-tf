@@ -1,0 +1,33 @@
+{
+  "builders": [{
+    "type": "azure-arm",
+
+    "client_id": " ",
+    "client_secret": " ",
+    "tenant_id": " ",
+    "subscription_id": " ",
+
+
+    "managed_image_resource_group_name": "K8Scluster",
+    "managed_image_name": "k8s_worker",
+
+    "os_type": "Linux",
+    "image_publisher": "Canonical",
+    "image_offer": "UbuntuServer",
+    "image_sku": "18.04-LTS",
+
+    "azure_tags": {
+        "env": "dev",
+        "type-of-cluster": "k8s-experments"
+    },
+
+    "location": "eastus2",
+    "vm_size": "Standard_D1_v2"
+  }],
+  "provisioners": [  
+    {
+    "type": "shell",
+    "script": "worker.sh"
+  }
+]
+}
